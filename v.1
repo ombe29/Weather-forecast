@@ -1,0 +1,126 @@
+from tkinter import *
+import requests
+import emoji
+
+
+def get_weather():
+    api_key = "ed673d882fb868f350d7261e249b4553"
+    city = city_input.get()
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}"
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        if data["cod"] == 200:
+            display_weather(data)
+
+    except requests.exceptions.HTTPError as http_error:
+        match response.status_code:
+            case 404:
+                display_error("Not found!\nCity doesn't exists")
+            case 400:
+                display_error("Bad request!\nCheck your input")
+            case 401:
+                display_error("Unauthorized!\nInvalid API key")
+            case 403:
+                display_error("forbidden!\nAccess is denied")
+            case 500:
+                display_error("Internal server error!\nTry again Later")
+            case 502:
+                display_error("Bad Gateway!\nInvalid response from the server")
+            case 503:
+                display_error("Service unavailable!\nServer is down")
+            case 504:
+                display_error("Gateway timeout\nNo response from the server")
+            case _:
+                display_error(f"http error occurred\n{http_error}")
+
+    except requests.exceptions.ConnectionError:
+        display_error("Connection error!\nCheck your Wi-Fi")
+    except requests.exceptions.Timeout:
+        display_error("Timeout!\nThe request timed out")
+    except requests.exceptions.TooManyRedirects:
+        display_error("Too many redirects!\nCheck the URL")
+    except requests.exceptions.RequestException as req_error:
+        display_error(f"Request error:\n{req_error}")
+
+
+def display_error(message):
+    temperature_label.config(font=("arial", 30), text=message)
+    weather_emoji_label.config(text=(emoji.emojize("❌")))
+
+
+def display_weather(data):
+    global temperature
+    temperature = str(int(data["main"]["temp"]-272.15).__round__())
+    temperature = temperature + "°C"
+    temperature_label.config(font=("david", 75), text=temperature)
+    weather_id = data["weather"][0]["id"]
+
+    description = data["weather"][0]["description"].capitalize()
+    weather_emoji_label.config(text=str(get_weather_emoji(weather_id)))
+    weather_description_label.config(text=description)
+
+
+def get_weather_emoji(weather_id):
+    if 200 <= weather_id <= 232:
+        return emoji.emojize("⛈")
+    elif 300 <= weather_id <= 321:
+        return emoji.emojize("🌦")
+    elif 500 <= weather_id <= 531:
+        return emoji.emojize("🌧")
+    elif 600 <= weather_id <= 622:
+        return emoji.emojize("❄")
+    elif 701 <= weather_id <= 741:
+        return emoji.emojize("🌫")
+    elif weather_id == 762:
+        return emoji.emojize("🌋")
+    elif weather_id == 771:
+        return emoji.emojize("💨")
+    elif weather_id == 781:
+        return emoji.emojize("🌪")
+    elif weather_id == 800:
+        return emoji.emojize("☀")
+    elif 801 <= weather_id <= 804:
+        return emoji.emojize("☁")
+    else:
+        return ""
+
+
+window = Tk()
+
+window_width = 600
+window_height = 650
+
+screen_width = window.winfo_screenwidth()
+screen_height = window.winfo_screenheight()
+
+x = (screen_width/2)-(window_width/2)
+y = (screen_height/2)-(window_height/2)-40
+
+window.title("Weather App API")
+window.geometry(f"{window_width}x{window_height}+{int(x)}+{int(y)}")
+temperature = ""
+
+
+city_label = Label(window, text="Enter a city: ", font=("calibri", 40, "italic"))
+city_label.pack()
+
+city_input = Entry(window, font=("arial", 40))
+city_input.pack()
+
+get_weather_button = Button(window, text="Get Weather", command=get_weather,
+                            font=("nordic", 30, "bold"), bg="#d4e3fa")
+get_weather_button.pack()
+
+temperature_label = Label(window, text=temperature, font=("david", 75))
+temperature_label.pack()
+
+weather_emoji_label = Label(window, font=("Segoe UI Emoji", 150))
+weather_emoji_label.pack()
+
+weather_description_label = Label(window, text="", font=("Smooch Sans", 50))
+weather_description_label.pack()
+
+window.mainloop()
